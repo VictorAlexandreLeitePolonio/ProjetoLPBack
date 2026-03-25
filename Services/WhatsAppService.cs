@@ -25,8 +25,8 @@ public class WhatsAppService : IWhatsAppService
 
         var payload = new
         {
-            number  = digits,
-            text    = message
+            number      = digits,
+            textMessage = new { text = message }
         };
 
         var json    = JsonSerializer.Serialize(payload);

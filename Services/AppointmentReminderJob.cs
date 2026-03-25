@@ -13,7 +13,7 @@ public class AppointmentReminderJob : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IWhatsAppService _whatsApp;
     private readonly ILogger<AppointmentReminderJob> _logger;
-    private static readonly TimeSpan Interval = TimeSpan.FromSeconds(30); // TESTE: voltar para FromHours(1)
+    private static readonly TimeSpan Interval = TimeSpan.FromHours(1);
 
     public AppointmentReminderJob(
         IServiceScopeFactory scopeFactory,
@@ -40,8 +40,8 @@ public class AppointmentReminderJob : BackgroundService
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var now  = DateTime.UtcNow;
-        var from = now.AddMinutes(1);  // TESTE: voltar para AddHours(23)
-        var to   = now.AddMinutes(3);  // TESTE: voltar para AddHours(25)
+        var from = now.AddHours(23);
+        var to   = now.AddHours(25);
 
         var appointments = await db.Appointments
             .Include(a => a.Patient)
