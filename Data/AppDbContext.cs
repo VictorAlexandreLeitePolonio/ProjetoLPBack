@@ -25,8 +25,9 @@ public class AppDbContext : DbContext
     public DbSet<MedicalRecord> MedicalRecords { get; set; } = null!;
     public DbSet<Payment> Payments { get; set; } = null!;
     public DbSet<Patient> Patients { get; set; } = null!;
-    public DbSet<Plans> Plans { get; set; } = null!;
-    public DbSet<Expense> Expenses { get; set; } = null!;
+    public DbSet<Plans>       Plans        { get; set; } = null!;
+    public DbSet<Expense>     Expenses     { get; set; } = null!;
+    public DbSet<WhatsAppLog> WhatsAppLogs { get; set; } = null!;
 
     // Método chamado automaticamente pelo EF Core ao criar o banco.
     // É aqui que configuramos os relacionamentos entre as tabelas explicitamente.
@@ -77,5 +78,12 @@ public class AppDbContext : DbContext
             .WithMany(pl => pl.Payments)
             .HasForeignKey(p => p.PlanId);
 
+        // WhatsAppLog → Patient (N:1, opcional) — log pode existir sem paciente vinculado.
+        modelBuilder.Entity<WhatsAppLog>()
+            .HasOne(w => w.Patient)
+            .WithMany()
+            .HasForeignKey(w => w.PatientId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

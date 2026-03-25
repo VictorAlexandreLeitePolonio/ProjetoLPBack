@@ -14,7 +14,9 @@ public class PaymentResponseDto
     public string PlanName { get; set; } = string.Empty;
     public decimal PlanAmount { get; set; }
 
-    public PaymentStatus Status { get; set; }
-    public DateTime? PaidAt { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public PaymentStatus Status              { get; set; }
+    public DateTime?     PaidAt              { get; set; }
+    public DateTime?     PaymentDate         { get; set; }
+    public bool          PaymentReminderSent { get; set; }
+    public DateTime      CreatedAt           { get; set; }
 }

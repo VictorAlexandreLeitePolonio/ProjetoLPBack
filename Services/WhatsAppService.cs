@@ -16,7 +16,7 @@ public class WhatsAppService : IWhatsAppService
         _instance   = config["EvolutionApi:Instance"]!;
     }
 
-    public async Task SendTextAsync(string phone, string message)
+    public async Task<bool> SendTextAsync(string phone, string message)
     {
         // Normaliza o número: remove tudo que não for dígito e garante o código do país (55).
         var digits = new string(phone.Where(char.IsDigit).ToArray());
@@ -41,6 +41,9 @@ public class WhatsAppService : IWhatsAppService
             _logger.LogWarning(
                 "[WhatsAppService] Falha ao enviar para {Phone}. Status: {Status}. Body: {Body}",
                 phone, response.StatusCode, body);
+            return false;
         }
+
+        return true;
     }
 }

@@ -57,17 +57,19 @@ public class PaymentsController : ControllerBase
 
         var data = payments.Select(p => new PaymentResponseDto
         {
-            Id             = p.Id,
-            UserId         = p.UserId,
-            PatientId      = p.PatientId,
-            PatientName    = p.Patient.Name,
-            PlanAmount     = p.Plan.Valor,
-            PlanName       = p.Plan.Name,
-            ReferenceMonth = p.ReferenceMonth,
-            PaymentMethod  = p.PaymentMethod,
-            Status         = p.Status,
-            PaidAt         = p.PaidAt,
-            CreatedAt      = p.CreatedAt
+            Id                  = p.Id,
+            UserId              = p.UserId,
+            PatientId           = p.PatientId,
+            PatientName         = p.Patient.Name,
+            PlanAmount          = p.Plan.Valor,
+            PlanName            = p.Plan.Name,
+            ReferenceMonth      = p.ReferenceMonth,
+            PaymentMethod       = p.PaymentMethod,
+            Status              = p.Status,
+            PaidAt              = p.PaidAt,
+            PaymentDate         = p.PaymentDate,
+            PaymentReminderSent = p.PaymentReminderSent,
+            CreatedAt           = p.CreatedAt
         });
 
         return Ok(new PagedResult<PaymentResponseDto>
@@ -93,17 +95,19 @@ public class PaymentsController : ControllerBase
 
         return Ok(new PaymentResponseDto
         {
-            Id             = payment.Id,
-            UserId         = payment.UserId,
-            PatientId      = payment.PatientId,
-            PatientName    = payment.Patient.Name,
-            PlanName       = payment.Plan.Name,
-            PlanAmount     = payment.Plan.Valor,
-            ReferenceMonth = payment.ReferenceMonth,
-            PaymentMethod  = payment.PaymentMethod,
-            Status         = payment.Status,
-            PaidAt         = payment.PaidAt,
-            CreatedAt      = payment.CreatedAt
+            Id                  = payment.Id,
+            UserId              = payment.UserId,
+            PatientId           = payment.PatientId,
+            PatientName         = payment.Patient.Name,
+            PlanName            = payment.Plan.Name,
+            PlanAmount          = payment.Plan.Valor,
+            ReferenceMonth      = payment.ReferenceMonth,
+            PaymentMethod       = payment.PaymentMethod,
+            Status              = payment.Status,
+            PaidAt              = payment.PaidAt,
+            PaymentDate         = payment.PaymentDate,
+            PaymentReminderSent = payment.PaymentReminderSent,
+            CreatedAt           = payment.CreatedAt
         });
     }
 
@@ -145,6 +149,7 @@ public class PaymentsController : ControllerBase
             Amount         = plan.Valor, // Valor sempre vem do plano.
             ReferenceMonth = dto.ReferenceMonth,
             PaymentMethod  = dto.PaymentMethod,
+            PaymentDate    = dto.PaymentDate,
         };
 
         _db.Payments.Add(payment);
@@ -181,11 +186,16 @@ public class PaymentsController : ControllerBase
         payment.ReferenceMonth = dto.ReferenceMonth;
         payment.PaymentMethod  = dto.PaymentMethod;
         payment.Status         = dto.Status;
+        payment.PaymentDate    = dto.PaymentDate;
 
         // Gerencia PaidAt automaticamente: preenche ao confirmar, limpa ao cancelar/pendente.
         payment.PaidAt = dto.Status == PaymentStatus.Paid
             ? (dto.PaidAt ?? DateTime.UtcNow)
             : null;
+
+        // Se a data de vencimento mudou, reseta o flag de lembrete para permitir novo envio.
+        if (dto.PaymentDate != payment.PaymentDate)
+            payment.PaymentReminderSent = false;
 
         await _db.SaveChangesAsync();
 
@@ -196,17 +206,19 @@ public class PaymentsController : ControllerBase
 
         return Ok(new PaymentResponseDto
         {
-            Id             = updated!.Id,
-            UserId         = updated.UserId,
-            PatientId      = updated.PatientId,
-            PatientName    = updated.Patient.Name,
-            PlanName       = updated.Plan.Name,
-            PlanAmount     = updated.Plan.Valor,
-            ReferenceMonth = updated.ReferenceMonth,
-            PaymentMethod  = updated.PaymentMethod,
-            Status         = updated.Status,
-            PaidAt         = updated.PaidAt,
-            CreatedAt      = updated.CreatedAt
+            Id                  = updated!.Id,
+            UserId              = updated.UserId,
+            PatientId           = updated.PatientId,
+            PatientName         = updated.Patient.Name,
+            PlanName            = updated.Plan.Name,
+            PlanAmount          = updated.Plan.Valor,
+            ReferenceMonth      = updated.ReferenceMonth,
+            PaymentMethod       = updated.PaymentMethod,
+            Status              = updated.Status,
+            PaidAt              = updated.PaidAt,
+            PaymentDate         = updated.PaymentDate,
+            PaymentReminderSent = updated.PaymentReminderSent,
+            CreatedAt           = updated.CreatedAt
         });
     }
 

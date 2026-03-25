@@ -38,6 +38,12 @@ public class Payment
     // Não tem valor padrão pois começa nulo (ainda não foi pago).
     public DateTime? PaidAt { get; set; }
 
+    // Data de vencimento do pagamento — usada pelo PaymentReminderJob para enviar lembrete 24h antes.
+    public DateTime? PaymentDate { get; set; }
+
+    // Controla se o lembrete de vencimento já foi enviado via WhatsApp — evita envios duplicados.
+    public bool PaymentReminderSent { get; set; } = false;
+
     // Preenchido automaticamente com a data/hora de criação do registro.
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

@@ -4,21 +4,21 @@ using ProjetoLP.API.Models;
 
 namespace ProjetoLP.API.Services;
 
-// Serviço em segundo plano que envia lembretes de consulta via WhatsApp.
+// Serviço em segundo plano que envia lembretes de vencimento de pagamento via WhatsApp.
 // Executa ao iniciar a aplicação e depois a cada hora.
-// Só envia para consultas Scheduled com data entre 23h e 25h a partir de agora,
-// e que ainda não receberam lembrete (ReminderSent = false).
-public class AppointmentReminderJob : BackgroundService
+// Só envia para pagamentos Pending com PaymentDate entre 23h e 25h a partir de agora,
+// e que ainda não receberam lembrete (PaymentReminderSent = false).
+public class PaymentReminderJob : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IWhatsAppService _whatsApp;
-    private readonly ILogger<AppointmentReminderJob> _logger;
+    private readonly ILogger<PaymentReminderJob> _logger;
     private static readonly TimeSpan Interval = TimeSpan.FromHours(1);
 
-    public AppointmentReminderJob(
+    public PaymentReminderJob(
         IServiceScopeFactory scopeFactory,
         IWhatsAppService whatsApp,
-        ILogger<AppointmentReminderJob> logger)
+        ILogger<PaymentReminderJob> logger)
     {
         _scopeFactory = scopeFactory;
         _whatsApp     = whatsApp;
@@ -43,26 +43,29 @@ public class AppointmentReminderJob : BackgroundService
         var from = now.AddHours(23);
         var to   = now.AddHours(25);
 
-        var appointments = await db.Appointments
-            .Include(a => a.Patient)
-            .Where(a =>
-                a.Status       == AppointmentStatus.Scheduled &&
-                a.ReminderSent == false                       &&
-                a.AppointmentDate >= from                     &&
-                a.AppointmentDate <= to)
+        var payments = await db.Payments
+            .Include(p => p.Patient)
+            .Include(p => p.Plan)
+            .Where(p =>
+                p.Status               == PaymentStatus.Pending &&
+                p.PaymentReminderSent  == false                 &&
+                p.PaymentDate.HasValue                          &&
+                p.PaymentDate.Value >= from                     &&
+                p.PaymentDate.Value <= to)
             .ToListAsync();
 
-        if (appointments.Count == 0) return;
+        if (payments.Count == 0) return;
 
-        foreach (var appointment in appointments)
+        foreach (var payment in payments)
         {
-            var patient = appointment.Patient;
-            var date    = appointment.AppointmentDate.ToLocalTime();
-            var message =
+            var patient     = payment.Patient;
+            var dueDate     = payment.PaymentDate!.Value.ToLocalTime();
+            var message     =
                 $"Olá, {patient.Name}! 😊\n" +
-                $"Lembramos que você tem uma consulta amanhã às {date:HH:mm}.\n" +
-                $"Caso precise remarcar, entre em contato com a clínica com antecedência.\n" +
-                $"Até lá!";
+                $"Lembramos que o seu pagamento referente a *{payment.Plan.Name}* " +
+                $"({payment.ReferenceMonth}) vence amanhã ({dueDate:dd/MM/yyyy}).\n" +
+                $"Valor: R$ {payment.Amount:N2}.\n" +
+                $"Entre em contato com a clínica para regularizar. Obrigado!";
 
             string? errorMessage = null;
             bool    success      = false;
@@ -72,16 +75,16 @@ public class AppointmentReminderJob : BackgroundService
                 success = await _whatsApp.SendTextAsync(patient.Phone, message);
                 if (success)
                 {
-                    appointment.ReminderSent = true;
+                    payment.PaymentReminderSent = true;
                     _logger.LogInformation(
-                        "[AppointmentReminderJob] Lembrete enviado para {Patient} ({Phone}) — consulta em {Date}.",
-                        patient.Name, patient.Phone, date);
+                        "[PaymentReminderJob] Lembrete enviado para {Patient} ({Phone}) — vencimento em {Date}.",
+                        patient.Name, patient.Phone, dueDate);
                 }
                 else
                 {
                     errorMessage = "A Evolution API retornou status de falha.";
                     _logger.LogWarning(
-                        "[AppointmentReminderJob] Falha ao enviar lembrete para {Patient} ({Phone}).",
+                        "[PaymentReminderJob] Falha ao enviar lembrete para {Patient} ({Phone}).",
                         patient.Name, patient.Phone);
                 }
             }
@@ -89,7 +92,7 @@ public class AppointmentReminderJob : BackgroundService
             {
                 errorMessage = ex.Message;
                 _logger.LogError(ex,
-                    "[AppointmentReminderJob] Erro ao enviar lembrete para {Patient} ({Phone}).",
+                    "[PaymentReminderJob] Erro ao enviar lembrete para {Patient} ({Phone}).",
                     patient.Name, patient.Phone);
             }
 
@@ -98,7 +101,7 @@ public class AppointmentReminderJob : BackgroundService
                 PatientId    = patient.Id,
                 Phone        = patient.Phone,
                 Message      = message,
-                Type         = "AppointmentReminder",
+                Type         = "PaymentReminder",
                 Success      = success,
                 ErrorMessage = errorMessage,
                 SentAt       = DateTime.UtcNow,

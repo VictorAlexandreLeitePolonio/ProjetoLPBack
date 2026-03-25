@@ -2,5 +2,6 @@ namespace ProjetoLP.API.Services;
 
 public interface IWhatsAppService
 {
-    Task SendTextAsync(string phone, string message);
+    // Retorna true se a Evolution API respondeu com sucesso, false em caso de falha.
+    Task<bool> SendTextAsync(string phone, string message);
 }

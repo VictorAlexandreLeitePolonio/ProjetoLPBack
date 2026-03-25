@@ -117,6 +117,80 @@ public class PatientsController : ControllerBase
         });
     }
 
+    // GET /api/patients/{id}/profile
+    // Retorna dados completos do paciente + histórico de consultas, prontuários e pagamentos.
+    [HttpGet("{id}/profile")]
+    public async Task<IActionResult> GetPatientProfile(int id)
+    {
+        var patient = await _db.Patients
+            .Include(p => p.Appointments).ThenInclude(a => a.User)
+            .Include(p => p.MedicalRecords).ThenInclude(m => m.User)
+            .Include(p => p.Payments).ThenInclude(p => p.Plan)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (patient == null)
+            return NotFound(new { message = "Paciente não encontrado." });
+
+        var profile = new PatientProfileDto
+        {
+            Id        = patient.Id,
+            Name      = patient.Name,
+            Email     = patient.Email,
+            CPF       = patient.CPF,
+            Rg        = patient.Rg,
+            Phone     = patient.Phone,
+            Rua       = patient.Rua,
+            Numero    = patient.Numero,
+            Bairro    = patient.Bairro,
+            Cidade    = patient.Cidade,
+            Estado    = patient.Estado,
+            Cep       = patient.Cep,
+            IsActive  = patient.IsActive,
+            CreatedAt = patient.CreatedAt,
+
+            Appointments = patient.Appointments
+                .OrderByDescending(a => a.AppointmentDate)
+                .Select(a => new AppointmentSummary
+                {
+                    Id              = a.Id,
+                    AppointmentDate = a.AppointmentDate,
+                    Status          = a.Status,
+                    UserName        = a.User.Name,
+                    CreatedAt       = a.CreatedAt,
+                }).ToList(),
+
+            MedicalRecords = patient.MedicalRecords
+                .OrderByDescending(m => m.CreatedAt)
+                .Select(m => new MedicalRecordSummary
+                {
+                    Id        = m.Id,
+                    Titulo    = m.Titulo,
+                    Sessao    = m.Sessao,
+                    Patologia = m.Patologia,
+                    UserName  = m.User.Name,
+                    CreatedAt = m.CreatedAt,
+                }).ToList(),
+
+            Payments = patient.Payments
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new PaymentSummary
+                {
+                    Id                  = p.Id,
+                    ReferenceMonth      = p.ReferenceMonth,
+                    PlanName            = p.Plan.Name,
+                    Amount              = p.Amount,
+                    PaymentMethod       = p.PaymentMethod,
+                    Status              = p.Status,
+                    PaymentDate         = p.PaymentDate,
+                    PaidAt              = p.PaidAt,
+                    PaymentReminderSent = p.PaymentReminderSent,
+                    CreatedAt           = p.CreatedAt,
+                }).ToList(),
+        };
+
+        return Ok(profile);
+    }
+
     // POST /api/patients
     [HttpPost]
     public async Task<IActionResult> CreatePatient(CreatePatientDto dto)

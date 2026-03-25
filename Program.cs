@@ -37,6 +37,9 @@ builder.Services.AddHttpClient<IWhatsAppService, WhatsAppService>(client =>
 // Serviço em segundo plano — envia lembretes de consulta via WhatsApp 24h antes.
 builder.Services.AddHostedService<AppointmentReminderJob>();
 
+// Serviço em segundo plano — envia lembretes de vencimento de pagamento via WhatsApp 24h antes.
+builder.Services.AddHostedService<PaymentReminderJob>();
+
 // Lê as configurações JWT do appsettings.json.
 // "!" suprime o aviso de nullable — garantimos que os valores existem no appsettings.
 var jwtKey = builder.Configuration["Jwt:Key"]!;
