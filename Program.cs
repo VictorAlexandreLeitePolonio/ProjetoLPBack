@@ -27,6 +27,16 @@ builder.Services.AddSwaggerGen();
 // Serviço em segundo plano — cancela consultas Scheduled com data no passado.
 builder.Services.AddHostedService<AppointmentStatusUpdater>();
 
+// WhatsApp — cliente HTTP tipado para a Evolution API.
+builder.Services.AddHttpClient<IWhatsAppService, WhatsAppService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["EvolutionApi:BaseUrl"]!);
+    client.DefaultRequestHeaders.Add("apikey", builder.Configuration["EvolutionApi:ApiKey"]!);
+});
+
+// Serviço em segundo plano — envia lembretes de consulta via WhatsApp 24h antes.
+builder.Services.AddHostedService<AppointmentReminderJob>();
+
 // Lê as configurações JWT do appsettings.json.
 // "!" suprime o aviso de nullable — garantimos que os valores existem no appsettings.
 var jwtKey = builder.Configuration["Jwt:Key"]!;

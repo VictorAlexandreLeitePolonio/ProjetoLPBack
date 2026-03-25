@@ -54,9 +54,9 @@ public class AppointmentsController : ControllerBase
             UserName        = a.User.Name,
             PatientId       = a.PatientId,
             PatientName     = a.Patient.Name,
-            AppointmentDate = a.AppointmentDate,
+            AppointmentDate = DateTime.SpecifyKind(a.AppointmentDate, DateTimeKind.Utc),
             Status          = a.Status,
-            CreatedAt       = a.CreatedAt,
+            CreatedAt       = DateTime.SpecifyKind(a.CreatedAt, DateTimeKind.Utc),
         });
 
         return Ok(new PagedResult<AppointmentResponseDto>
@@ -85,11 +85,11 @@ public class AppointmentsController : ControllerBase
             Id              = appointment.Id,
             UserId          = appointment.UserId,
             UserName        = appointment.User.Name,
-            AppointmentDate = appointment.AppointmentDate,
+            AppointmentDate = DateTime.SpecifyKind(appointment.AppointmentDate, DateTimeKind.Utc),
             Status          = appointment.Status,
             PatientId       = appointment.PatientId,
             PatientName     = appointment.Patient.Name,
-            CreatedAt       = appointment.CreatedAt,
+            CreatedAt       = DateTime.SpecifyKind(appointment.CreatedAt, DateTimeKind.Utc),
         });
     }
 
@@ -120,7 +120,20 @@ public class AppointmentsController : ControllerBase
 
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetAppointment), new { id = appointment.Id }, appointment);
+
+        var response = new AppointmentResponseDto
+        {
+            Id              = appointment.Id,
+            UserId          = appointment.UserId,
+            UserName        = user.Name,
+            PatientId       = appointment.PatientId,
+            PatientName     = patient.Name,
+            AppointmentDate = DateTime.SpecifyKind(appointment.AppointmentDate, DateTimeKind.Utc),
+            Status          = appointment.Status,
+            CreatedAt       = DateTime.SpecifyKind(appointment.CreatedAt, DateTimeKind.Utc),
+        };
+
+        return CreatedAtAction(nameof(GetAppointment), new { id = appointment.Id }, response);
     }
 
     // PUT /api/appointments/{id}

@@ -29,6 +29,10 @@ public class Appointment
     // Preenchido automaticamente com a data/hora de criação do registro.
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // Indica se o lembrete de consulta já foi enviado via WhatsApp.
+    // Evita reenvio a cada ciclo do job de lembretes.
+    public bool ReminderSent { get; set; } = false;
+
     // Navigation property — permite acessar os dados do usuário dono desta consulta.
     // "null!" diz ao compilador: "sei que pode ser nulo, mas garanto que sempre será preenchido pelo EF Core".
     public User User { get; set; } = null!;
