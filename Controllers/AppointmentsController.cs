@@ -19,10 +19,16 @@ public class AppointmentsController : ControllerBase
     }
 
     // GET /api/appointments
+    // Filtros de data:
+    //   ?date=YYYY-MM-DD         — dia exato (mantido para compatibilidade)
+    //   ?dateFrom=YYYY-MM-DD     — início do intervalo (inclusivo)
+    //   ?dateTo=YYYY-MM-DD       — fim do intervalo (inclusivo, até 23:59:59)
     [HttpGet]
     public async Task<IActionResult> GetAppointments(
         [FromQuery] AppointmentStatus? status,
         [FromQuery] DateOnly? date,
+        [FromQuery] DateOnly? dateFrom,
+        [FromQuery] DateOnly? dateTo,
         [FromQuery] string? PatientName,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10)
@@ -37,6 +43,12 @@ public class AppointmentsController : ControllerBase
 
         if (date.HasValue)
             query = query.Where(a => DateOnly.FromDateTime(a.AppointmentDate) == date.Value);
+
+        if (dateFrom.HasValue)
+            query = query.Where(a => a.AppointmentDate >= dateFrom.Value.ToDateTime(TimeOnly.MinValue));
+
+        if (dateTo.HasValue)
+            query = query.Where(a => a.AppointmentDate <= dateTo.Value.ToDateTime(TimeOnly.MaxValue));
 
         if (!string.IsNullOrEmpty(PatientName))
             query = query.Where(a => a.Patient.Name.Contains(PatientName));
