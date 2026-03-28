@@ -156,7 +156,27 @@ public class PaymentsController : ControllerBase
 
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetPayment), new { id = payment.Id }, payment);
+
+        // Retorna DTO em vez da entidade para evitar referências circulares na serialização JSON.
+        // Após SaveChanges(), o EF fixa automaticamente Patient e Plan na entidade,
+        // criando um ciclo payment→patient.Payments→payment que o System.Text.Json rejeita.
+        return CreatedAtAction(nameof(GetPayment), new { id = payment.Id }, new PaymentResponseDto
+        {
+            Id                  = payment.Id,
+            UserId              = payment.UserId,
+            PatientId           = payment.PatientId,
+            PatientName         = patient.Name,
+            PlanId              = payment.PlanId,
+            PlanName            = plan.Name,
+            PlanAmount          = plan.Valor,
+            ReferenceMonth      = payment.ReferenceMonth,
+            PaymentMethod       = payment.PaymentMethod,
+            Status              = payment.Status,
+            PaidAt              = payment.PaidAt,
+            PaymentDate         = payment.PaymentDate,
+            PaymentReminderSent = payment.PaymentReminderSent,
+            CreatedAt           = payment.CreatedAt
+        });
     }
 
     // PUT /api/payments/{id}
