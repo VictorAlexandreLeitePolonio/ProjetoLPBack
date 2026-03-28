@@ -21,6 +21,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 
+// Financial — Repository e Service
+builder.Services.AddScoped<IFinancialRepository, FinancialRepository>();
+builder.Services.AddScoped<IFinancialService, FinancialService>();
+
 // Habilita o uso de Controllers com [ApiController] e roteamento automático.
 // JsonStringEnumConverter garante que enums aparecem como "Scheduled" e não como 0.
 builder.Services.AddControllers()

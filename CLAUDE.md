@@ -95,3 +95,96 @@ Three `IHostedService` implementations run hourly:
 ```
 
 CORS is hardcoded to `http://localhost:3000` (the frontend dev server).
+
+
+ ---
+  Plano de Ação Arquitetural
+
+  Fase 1 — Fundação (Semana 1-2)
+
+  Repository Pattern — desacopla queries do controller
+
+  ProjetoLP.API/
+  ├── Repositories/
+  │   ├── Interfaces/
+  │   │   ├── IPaymentRepository.cs
+  │   │   ├── IPatientRepository.cs
+  │   │   ├── IAppointmentRepository.cs
+  │   │   └── ...
+  │   ├── PaymentRepository.cs
+  │   ├── PatientRepository.cs
+  │   └── ...
+
+  Começa pelos 2 controllers mais complexos: Payments e Patients. Os repositórios consolidam os Include() espalhados e encapsulam a paginação.
+
+  ---
+  Fase 2 — Negócio (Semana 2-3)
+
+  Service Layer — tira a lógica dos controllers
+
+  ProjetoLP.API/
+  ├── Services/
+  │   ├── Interfaces/
+  │   │   ├── IPaymentService.cs
+  │   │   └── IPatientService.cs
+  │   ├── PaymentService.cs   ← regras de negócio + validações
+  │   └── PatientService.cs
+
+  Controllers ficam com ~10 linhas cada: recebem DTO → chamam service → mapeiam Result para HTTP.
+
+  ---
+  Fase 3 — Contratos de Erro (Semana 3)
+
+  Result Pattern — substitui retornos misturados
+
+  // Common/Result.cs
+  public record Result<T>(bool IsSuccess, T? Value, string? ErrorCode, string? Message);
+
+  // Common/ErrorCodes.cs
+  public static class ErrorCodes
+  {
+      public const string NotFound       = "NOT_FOUND";
+      public const string DuplicateMonth = "DUPLICATE_PAYMENT";
+      public const string InactivePatient = "INACTIVE_PATIENT";
+  }
+
+  ---
+  Fase 4 — Validação Centralizada (Semana 3-4)
+
+  Validators — elimina o Regex repetido 6× e os if espalhados
+
+  ProjetoLP.API/
+  ├── Validators/
+  │   ├── CreatePaymentDtoValidator.cs
+  │   ├── CreateExpenseDtoValidator.cs
+  │   └── ...
+
+  ---
+  Fase 5 — Background Services (Semana 4-5)
+
+  Abstrações para os Jobs
+
+  Services/
+  ├── Interfaces/
+  │   ├── IAppointmentReminderService.cs
+  │   └── IMessageTemplateService.cs
+  ├── AppointmentReminderService.cs   ← lógica extraída do Job
+  ├── MessageTemplateService.cs       ← templates de WhatsApp
+  └── Jobs/
+      ├── AppointmentReminderJob.cs   ← só o loop de timer
+      └── PaymentReminderJob.cs
+
+  ---
+  Ordem de execução recomendada
+
+  Fase 1 → Fase 2 → Fase 3 → Fase 4 → Fase 5
+    ↓         ↓        ↓
+  Testes    Testes   Testes
+  unitários unitários unitários
+  ficam     ficam     ficam
+  possíveis rápidos   completos
+
+  Com Fase 1+2 completas, os 85 testes de integração atuais se tornam desnecessários — você testa o PaymentService diretamente com mocks, sem
+  HTTP client.
+
+  ---

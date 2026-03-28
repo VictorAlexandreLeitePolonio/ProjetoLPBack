@@ -19,3 +19,7 @@ Thumbs.db
 
 ## Uploads gerados em runtime
 wwwroot/uploads/
+
+docs/superpowers/plans
+CLAUDE.md
+AGENTS.md
