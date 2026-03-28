@@ -33,6 +33,10 @@ builder.Services.AddScoped<IPatientService, PatientService>();
 builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 
+// Plan — Repository e Service
+builder.Services.AddScoped<IPlanRepository, PlanRepository>();
+builder.Services.AddScoped<IPlanService, PlanService>();
+
 // Habilita o uso de Controllers com [ApiController] e roteamento automático.
 // JsonStringEnumConverter garante que enums aparecem como "Scheduled" e não como 0.
 builder.Services.AddControllers()
