@@ -1,28 +1,18 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ProjetoLP.API.Data;
+using ProjetoLP.API.Common;
+using ProjetoLP.API.DTOs;
 using ProjetoLP.API.DTOs.Appointment;
 using ProjetoLP.API.Models;
-using ProjetoLP.API.DTOs;
+using ProjetoLP.API.Services.Interfaces;
+
+namespace ProjetoLP.API.Controllers;
 
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class AppointmentsController : ControllerBase
+public class AppointmentsController(IAppointmentService service) : ControllerBase
 {
-    private readonly AppDbContext _db;
-
-    public AppointmentsController(AppDbContext db)
-    {
-        _db = db;
-    }
-
-    // GET /api/appointments
-    // Filtros de data:
-    //   ?date=YYYY-MM-DD         — dia exato (mantido para compatibilidade)
-    //   ?dateFrom=YYYY-MM-DD     — início do intervalo (inclusivo)
-    //   ?dateTo=YYYY-MM-DD       — fim do intervalo (inclusivo, até 23:59:59)
     [HttpGet]
     public async Task<IActionResult> GetAppointments(
         [FromQuery] AppointmentStatus? status,
@@ -33,158 +23,63 @@ public class AppointmentsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10)
     {
-        var query = _db.Appointments
-            .Include(a => a.Patient)
-            .Include(a => a.User)
-            .AsQueryable();
-
-        if (status.HasValue)
-            query = query.Where(a => a.Status == status.Value);
-
-        if (date.HasValue)
-            query = query.Where(a => DateOnly.FromDateTime(a.AppointmentDate) == date.Value);
-
-        if (dateFrom.HasValue)
-            query = query.Where(a => a.AppointmentDate >= dateFrom.Value.ToDateTime(TimeOnly.MinValue));
-
-        if (dateTo.HasValue)
-            query = query.Where(a => a.AppointmentDate <= dateTo.Value.ToDateTime(TimeOnly.MaxValue));
-
-        if (!string.IsNullOrEmpty(PatientName))
-            query = query.Where(a => a.Patient.Name.Contains(PatientName));
-
-        var totalCount = await query.CountAsync();
-        var appointments = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        var data = appointments.Select(a => new AppointmentResponseDto
-        {
-            Id              = a.Id,
-            UserId          = a.UserId,
-            UserName        = a.User.Name,
-            PatientId       = a.PatientId,
-            PatientName     = a.Patient.Name,
-            AppointmentDate = DateTime.SpecifyKind(a.AppointmentDate, DateTimeKind.Utc),
-            Status          = a.Status,
-            CreatedAt       = DateTime.SpecifyKind(a.CreatedAt, DateTimeKind.Utc),
-        });
-
-        return Ok(new PagedResult<AppointmentResponseDto>
-        {
-            Data = data,
-            TotalCount = totalCount,
-            Page = page,
-            PageSize = pageSize
-        });
+        var result = await service.GetPagedAsync(
+            status, date, dateFrom, dateTo, PatientName, page, pageSize);
+        return Ok(result.Value);
     }
 
-    // GET /api/appointments/{id}
     [HttpGet("{id}")]
     public async Task<IActionResult> GetAppointment(int id)
     {
-        var appointment = await _db.Appointments
-            .Include(a => a.Patient)
-            .Include(a => a.User)
-            .FirstOrDefaultAsync(a => a.Id == id);
-
-        if (appointment == null)
-            return NotFound(new { message = "Consulta não encontrada." });
-
-        return Ok(new AppointmentResponseDto
-        {
-            Id              = appointment.Id,
-            UserId          = appointment.UserId,
-            UserName        = appointment.User.Name,
-            AppointmentDate = DateTime.SpecifyKind(appointment.AppointmentDate, DateTimeKind.Utc),
-            Status          = appointment.Status,
-            PatientId       = appointment.PatientId,
-            PatientName     = appointment.Patient.Name,
-            CreatedAt       = DateTime.SpecifyKind(appointment.CreatedAt, DateTimeKind.Utc),
-        });
+        var result = await service.GetByIdAsync(id);
+        return result.IsSuccess
+            ? Ok(result.Value)
+            : NotFound(new { message = result.ErrorMessage });
     }
 
-    // POST /api/appointments
     [HttpPost]
     public async Task<IActionResult> CreateAppointment(CreateAppointmentDto dto)
     {
-        var user    = await _db.Users.FindAsync(dto.UserId);
-        var patient = await _db.Patients.FindAsync(dto.PatientId);
+        var result = await service.CreateAsync(dto);
+        if (!result.IsSuccess)
+            return result.ErrorCode switch
+            {
+                ErrorCodes.NotFound         => NotFound(new { message = result.ErrorMessage }),
+                ErrorCodes.InactivePatient  => BadRequest(new { message = result.ErrorMessage }),
+                ErrorCodes.InvalidDate      => BadRequest(new { message = result.ErrorMessage }),
+                _                           => BadRequest(new { message = result.ErrorMessage })
+            };
 
-        if (user == null)    return NotFound(new { message = "Usuário não encontrado." });
-        if (patient == null) return NotFound(new { message = "Paciente não encontrado." });
-
-        // Impede agendamento para paciente inativo.
-        if (!patient.IsActive)
-            return BadRequest(new { message = "Não é possível agendar consulta para um paciente inativo." });
-
-        // Impede agendamento no passado.
-        if (dto.AppointmentDate < DateTime.UtcNow)
-            return BadRequest(new { message = "A data da consulta deve ser futura." });
-
-        var appointment = new Appointment
-        {
-            UserId          = dto.UserId,
-            PatientId       = dto.PatientId,
-            AppointmentDate = dto.AppointmentDate,
-        };
-
-        _db.Appointments.Add(appointment);
-        await _db.SaveChangesAsync();
-
-        var response = new AppointmentResponseDto
-        {
-            Id              = appointment.Id,
-            UserId          = appointment.UserId,
-            UserName        = user.Name,
-            PatientId       = appointment.PatientId,
-            PatientName     = patient.Name,
-            AppointmentDate = DateTime.SpecifyKind(appointment.AppointmentDate, DateTimeKind.Utc),
-            Status          = appointment.Status,
-            CreatedAt       = DateTime.SpecifyKind(appointment.CreatedAt, DateTimeKind.Utc),
-        };
-
-        return CreatedAtAction(nameof(GetAppointment), new { id = appointment.Id }, response);
+        return CreatedAtAction(nameof(GetAppointment), new { id = result.Value!.Id }, result.Value);
     }
 
-    // PUT /api/appointments/{id}
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateAppointment(int id, UpdateAppointmentDto dto)
     {
-        var appointment = await _db.Appointments.FindAsync(id);
-        if (appointment == null)
-            return NotFound(new { message = "Consulta não encontrada." });
+        var result = await service.UpdateAsync(id, dto);
+        if (!result.IsSuccess)
+            return result.ErrorCode switch
+            {
+                ErrorCodes.NotFound      => NotFound(new { message = result.ErrorMessage }),
+                ErrorCodes.CannotModify  => BadRequest(new { message = result.ErrorMessage }),
+                _                        => BadRequest(new { message = result.ErrorMessage })
+            };
 
-        // Consulta concluída não pode voltar para Scheduled.
-        if (appointment.Status == AppointmentStatus.Completed && dto.Status == AppointmentStatus.Scheduled)
-            return BadRequest(new { message = "Não é possível reabrir uma consulta já concluída." });
-
-        // Consulta cancelada não pode mudar de status.
-        if (appointment.Status == AppointmentStatus.Cancelled)
-            return BadRequest(new { message = "Não é possível alterar uma consulta cancelada." });
-
-        appointment.AppointmentDate = dto.AppointmentDate;
-        appointment.Status          = dto.Status;
-
-        await _db.SaveChangesAsync();
-        return Ok(appointment);
+        return Ok(result.Value);
     }
 
-    // DELETE /api/appointments/{id}
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAppointment(int id)
     {
-        var appointment = await _db.Appointments.FindAsync(id);
-        if (appointment == null)
-            return NotFound(new { message = "Consulta não encontrada." });
+        var result = await service.DeleteAsync(id);
+        if (!result.IsSuccess)
+            return result.ErrorCode switch
+            {
+                ErrorCodes.NotFound      => NotFound(new { message = result.ErrorMessage }),
+                ErrorCodes.CannotDelete  => BadRequest(new { message = result.ErrorMessage }),
+                _                        => BadRequest(new { message = result.ErrorMessage })
+            };
 
-        // Impede deleção de consultas concluídas — protege o histórico clínico.
-        if (appointment.Status == AppointmentStatus.Completed)
-            return BadRequest(new { message = "Não é possível excluir uma consulta já concluída." });
-
-        _db.Appointments.Remove(appointment);
-        await _db.SaveChangesAsync();
         return NoContent();
     }
 }
