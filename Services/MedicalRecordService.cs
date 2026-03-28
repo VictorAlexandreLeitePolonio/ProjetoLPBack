@@ -120,9 +120,9 @@ public class MedicalRecordService(
         if (contentType != "application/pdf")
             return Result<string>.Fail(ErrorCodes.InvalidFileType, "Apenas arquivos PDF são aceitos.");
 
-        // Limite de 10MB para contratos
-        if (fileStream.Length > 10 * 1024 * 1024)
-            return Result<string>.Fail(ErrorCodes.FileTooLarge, "O arquivo não pode ser maior que 10MB.");
+        // Limite de 20MB para contratos
+        if (fileStream.Length > 20 * 1024 * 1024)
+            return Result<string>.Fail(ErrorCodes.FileTooLarge, "O arquivo não pode ser maior que 20MB.");
 
         var newFileName = $"{Guid.NewGuid()}{Path.GetExtension(fileName)}";
         var folder = Path.Combine("wwwroot", "uploads", "contratos");
@@ -152,9 +152,9 @@ public class MedicalRecordService(
         if (!allowedTypes.Contains(contentType))
             return Result<string>.Fail(ErrorCodes.InvalidFileType, "Apenas imagens JPG ou PNG são aceitas.");
 
-        // Limite de 5MB para imagens
-        if (fileStream.Length > 5 * 1024 * 1024)
-            return Result<string>.Fail(ErrorCodes.FileTooLarge, "A imagem não pode ser maior que 5MB.");
+        // Limite de 10MB para imagens
+        if (fileStream.Length > 10 * 1024 * 1024)
+            return Result<string>.Fail(ErrorCodes.FileTooLarge, "A imagem não pode ser maior que 10MB.");
 
         var newFileName = $"{Guid.NewGuid()}{Path.GetExtension(fileName)}";
         var folder = Path.Combine("wwwroot", "uploads", "exames");
