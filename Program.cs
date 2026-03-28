@@ -6,6 +6,9 @@ using System.Text.Json.Serialization;
 using ProjetoLP.API.Data;
 using ProjetoLP.API.Models;
 using ProjetoLP.API.Services;
+using ProjetoLP.API.Repositories;
+using ProjetoLP.API.Repositories.Interfaces;
+using ProjetoLP.API.Services.Interfaces;
 
 // Cria o construtor da aplicação — todos os serviços são registrados aqui antes do Build().
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +16,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Registra o AppDbContext com SQLite via string de conexão do appsettings.json.
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Payment — Repository e Service
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 // Habilita o uso de Controllers com [ApiController] e roteamento automático.
 // JsonStringEnumConverter garante que enums aparecem como "Scheduled" e não como 0.
