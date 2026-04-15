@@ -68,9 +68,9 @@ public class AuthController : ControllerBase
 
         Response.Cookies.Append("auth_token", tokenString, new CookieOptions
         {
-            HttpOnly = true,       // não acessível via JS
-            Secure = false,        // true em produção (HTTPS)
-            SameSite = SameSiteMode.Lax,
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
             Expires = DateTimeOffset.UtcNow.AddHours(8)
         });
 
