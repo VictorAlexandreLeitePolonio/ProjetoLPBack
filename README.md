@@ -103,8 +103,8 @@ ProjetoLP.Tests/            # Testes de integração (85 testes)
 
 ### Prontuários (`/api/medicalrecords`)
 - Registro clínico completo por paciente
-- Upload de contrato em PDF (limite 10MB)
-- Upload de exames de imagem JPG/PNG (limite 5MB)
+- Upload de contrato em PDF (limite 20MB)
+- Upload de exames de imagem JPG/PNG (limite 10MB)
 - Filtros por paciente, data e profissional
 
 ### Pagamentos (`/api/payments`)

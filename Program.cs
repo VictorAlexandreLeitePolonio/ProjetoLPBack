@@ -106,7 +106,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
   {
       options.AddPolicy("Frontend", policy =>
       {
-          policy.WithOrigins("http://localhost:3000")
+          policy.WithOrigins(builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:3000")
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials(); // necessário para enviar/receber cookies
@@ -117,11 +117,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // Constrói a aplicação — após essa linha, não é possível registrar novos serviços.
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
+
     app.UseSwagger();
     app.UseSwaggerUI();
-}
+
 
 // Seed — popula o banco com dados iniciais para desenvolvimento.
 using (var scope = app.Services.CreateScope())
